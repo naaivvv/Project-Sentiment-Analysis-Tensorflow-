@@ -3,7 +3,10 @@
 ### 🧠 Endterm Exam Project — NLP Transfer Learning  
 **Name:** Edwin P. Bayog Jr.  
 **Section:** BSCpE 4-A  
-**GitHub Repository:** [https://github.com/naaivvv/Project-Sentiment-Analysis-Tensorflow-](https://github.com/naaivvv/Project-Sentiment-Analysis-Tensorflow-)
+📂 **GitHub Repository:** [https://github.com/naaivvv/Project-Sentiment-Analysis-Tensorflow-](https://github.com/naaivvv/Project-Sentiment-Analysis-Tensorflow-)
+
+🚀 **Google Colab Notebook:** [Open in Colab](https://colab.research.google.com/drive/1FfCgNrhpYva99ilcC11OUt_5ORAjbbZp?usp=sharing)
+
 
 ---
 
