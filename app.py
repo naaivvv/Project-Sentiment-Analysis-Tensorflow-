@@ -1,46 +1,45 @@
-import os
-import re
-import requests
-import numpy as np
-import tensorflow as tf
-import pickle
+import os, re, requests, numpy as np, tensorflow as tf, pickle
 from gensim.models import KeyedVectors
 from flask import Flask, render_template, request, jsonify
 
 app = Flask(__name__)
 
-# --- CONFIGURATION ---
-W2V_PATH = "GoogleNews-vectors-negative300.bin"
-W2V_URL = "https://huggingface.co/stanfordnlp/word2vec-GoogleNews-vectors/resolve/main/GoogleNews-vectors-negative300.bin"
+# --- SETTINGS ---
+MODEL_PATH = "word2vec.model"
+MODEL_URL = "https://s3.amazonaws.com/dl4j-distribution/GoogleNews-vectors-negative300.bin.gz"
+MODEL_BIN = "GoogleNews-vectors-negative300.bin.gz"
 
-# --- DOWNLOAD WORD2VEC MODEL IF NOT PRESENT ---
-def download_word2vec():
-    if not os.path.exists(W2V_PATH):
-        print("⏬ Downloading Google Word2Vec pretrained model (~1.5GB)...")
-        with requests.get(W2V_URL, stream=True) as r:
+# --- DOWNLOAD PRETRAINED WORD2VEC IF NOT FOUND ---
+def ensure_word2vec():
+    if not os.path.exists(MODEL_BIN):
+        print("⏬ Downloading Word2Vec pretrained vectors (GoogleNews)... This may take a while.")
+        with requests.get(MODEL_URL, stream=True) as r:
             r.raise_for_status()
-            with open(W2V_PATH, "wb") as f:
+            with open(MODEL_BIN, "wb") as f:
                 for chunk in r.iter_content(chunk_size=8192):
                     f.write(chunk)
         print("✅ Download complete!")
 
-# --- LOAD MODELS ---
-print("🚀 Starting up the app...")
+# --- PRELOAD MODELS ---
+print("🚀 Initializing app...")
 
-# Download pretrained vectors if needed
-download_word2vec()
+ensure_word2vec()
+print("📦 Loading Word2Vec (this may take 1–2 minutes)...")
+w2v_model = KeyedVectors.load_word2vec_format(MODEL_BIN, binary=True, limit=300000)  # limit for memory
 
-# Load tokenizer and models
-tokenizer = pickle.load(open("tokenizer.pkl", "rb"))
-w2v_model = KeyedVectors.load_word2vec_format(W2V_PATH, binary=True)
+print("✅ Loading Keras model and tokenizer...")
 model = tf.keras.models.load_model("sentiment_model.keras")
+with open("tokenizer.pkl", "rb") as f:
+    tokenizer = pickle.load(f)
 
-# --- TEXT PREPROCESSING ---
+# --- PREPROCESSING ---
 def preprocess_text(text):
-    text = re.sub(r"[^a-zA-Z\s]", "", text)
-    text = text.lower().split()
-    vectors = [w2v_model[word] for word in text if word in w2v_model]
-    return np.mean(vectors, axis=0).reshape(1, -1) if vectors else np.zeros((1, 300))
+    text = re.sub(r"[^a-zA-Z\s]", "", text.lower())
+    words = text.split()
+    vectors = [w2v_model[word] for word in words if word in w2v_model]
+    if not vectors:
+        return np.zeros((1, 300))
+    return np.mean(vectors, axis=0).reshape(1, -1)
 
 # --- ROUTES ---
 @app.route("/")
@@ -51,10 +50,15 @@ def index():
 def predict():
     data = request.get_json()
     text = data.get("text", "")
-    processed = preprocess_text(text)
-    prediction = model.predict(processed)
-    sentiment = "Positive 😊" if prediction > 0.6 else "Negative 😞" if prediction < 0.4 else "Neutral 😐"
-    return jsonify({"sentiment": sentiment, "score": float(prediction)})
+    vec = preprocess_text(text)
+    score = float(model.predict(vec)[0][0])
+    if score > 0.65:
+        sentiment = "Positive 😊"
+    elif score < 0.35:
+        sentiment = "Negative 😠"
+    else:
+        sentiment = "Neutral 😐"
+    return jsonify({"sentiment": sentiment, "score": score})
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
