@@ -1,6 +1,4 @@
-flask
-tensorflow
-gensim
-numpy
-requests
-gunicorn
+Flask==3.0.3
+tensorflow-cpu==2.17.0
+numpy==1.26.4
+gunicorn==21.2.0

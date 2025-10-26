@@ -23,14 +23,21 @@ TOKENIZER_PATH = "tokenizer.pickle"
 model = None
 tokenizer = None
 
-try:
-    logger.info("🔍 Loading sentiment model and tokenizer...")
-    model = load_model(MODEL_PATH)
-    with open(TOKENIZER_PATH, "rb") as handle:
-        tokenizer = pickle.load(handle)
-    logger.info("✅ Model and tokenizer loaded successfully!")
-except Exception as e:
-    logger.error(f"❌ Failed to load model or tokenizer: {e}")
+def load_resources():
+    global model, tokenizer
+    if model is None or tokenizer is None:
+        import gc
+        gc.collect()
+        logger.info("🧠 Loading Keras model and tokenizer (lazy load)...")
+        model = load_model(MODEL_PATH)
+        with open(TOKENIZER_PATH, "rb") as handle:
+            tokenizer = pickle.load(handle)
+        logger.info("✅ Model ready.")
+
+@app.before_request
+def before_request():
+    load_resources()
+
 
 # -------------------------------------------------------
 # Prediction Function
