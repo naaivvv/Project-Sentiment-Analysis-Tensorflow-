@@ -1,4 +1,6 @@
 flask
-tensorflow
+tensorflow==2.17.0
+gensim
 numpy
+requests
 gunicorn
